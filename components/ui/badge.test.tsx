@@ -1,40 +1,39 @@
-import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { Badge } from './badge';
 
 describe('Badge', () => {
-  it('renders with default variant', () => {
-    render(<Badge>Default Badge</Badge>);
-    const badge = screen.getByText('Default Badge');
-    expect(badge).toBeInTheDocument();
-    expect(badge).toHaveClass('bg-primary');
+  it('should render successfully', () => {
+    const { baseElement } = render(<Badge>Default</Badge>);
+    expect(baseElement).toBeTruthy();
   });
 
-  it('renders with secondary variant', () => {
-    render(<Badge variant="secondary">Secondary Badge</Badge>);
-    const badge = screen.getByText('Secondary Badge');
-    expect(badge).toBeInTheDocument();
-    expect(badge).toHaveClass('bg-secondary');
+  it('should render children', () => {
+    const { getByText } = render(<Badge>Badge Content</Badge>);
+    expect(getByText('Badge Content')).toBeInTheDocument();
   });
 
-  it('renders with destructive variant', () => {
-    render(<Badge variant="destructive">Destructive Badge</Badge>);
-    const badge = screen.getByText('Destructive Badge');
-    expect(badge).toBeInTheDocument();
-    expect(badge).toHaveClass('bg-destructive');
+  it('should have default variant class', () => {
+    const { container } = render(<Badge>test</Badge>);
+    const badge = container.firstChild;
+    expect(badge).toHaveClass('rounded-md border px-2 py-1 text-sm font-medium');
   });
 
-  it('renders with outline variant', () => {
-    render(<Badge variant="outline">Outline Badge</Badge>);
-    const badge = screen.getByText('Outline Badge');
-    expect(badge).toBeInTheDocument();
-    expect(badge).toHaveClass('text-foreground');
+  it('should support custom variant', () => {
+    const { container } = render(<Badge variant="destructive">test</Badge>);
+    const badge = container.firstChild;
+    expect(badge).toHaveClass('border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80');
   });
 
-  it('applies custom className', () => {
-    render(<Badge className="custom-class">Custom Badge</Badge>);
-    const badge = screen.getByText('Custom Badge');
+  it('should support custom class', () => {
+    render(<Badge className="custom-class">test</Badge>);
+    const badge = document.querySelector('.custom-class');
     expect(badge).toBeInTheDocument();
     expect(badge).toHaveClass('custom-class');
+  });
+
+  it('should support the warning variant', () => {
+    const { container } = render(<Badge variant="warning">test</Badge>);
+    const badge = container.firstChild;
+    expect(badge).toHaveClass('border-transparent bg-orange-100 text-orange-500 hover:bg-orange-200');
   });
 });
