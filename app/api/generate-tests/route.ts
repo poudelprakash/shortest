@@ -25,7 +25,8 @@ async function debugGenerateObject(prompt: string, model: "anthropic" | "gemini"
         prompt: prompt,
       });
     } else if (model === "gemini") {
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const GEMENI_KEY = process.env.GEMINI_API_KEY || ''
+      const genAI = new GoogleGenerativeAI(GEMENI_KEY);
       const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro-002" });
       
       const geminiResult = await geminiModel.generateContent(prompt);
