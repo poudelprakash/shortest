@@ -111,11 +111,20 @@ export async function commitChangesToMergeRequest(
   try {
     const gitlab = await getGitlabClient();
 
-    const mr = await gitlab.MergeRequests.show(projectId, mergeRequestIid);
+    const [mr, project] = await Promise.all([
+      gitlab.MergeRequests.show(projectId, mergeRequestIid),
+      gitlab.Projects.show(projectId)
+    ]);
     const branch = mr.source_branch;
 
+    // Get existing files in the repository
+    const existingFiles = await gitlab.Repositories.allRepositoryTrees(projectId, {
+      ref: branch,
+      recursive: true,
+    });
+
     const actions: CommitAction[] = filesToCommit.map((file) => ({
-      action: "update" as const,
+      action: existingFiles.some(f => f.path === file.name) ? "update" : "create",
       filePath: file.name,
       content: file.content,
     }));
@@ -123,11 +132,12 @@ export async function commitChangesToMergeRequest(
     const commit = await gitlab.Commits.create(
       projectId,
       branch,
-      "Update test files",
+      "Update and create test files",
       actions
     );
 
-    return `https://gitlab.com/${mr.references.full}/commit/${commit.id}`;
+    // Construct the correct URL using the project's path with namespace
+    return `https://gitlab.com/${project.path_with_namespace}/-/commit/${commit.id}`;
   } catch (error) {
     console.error("Error committing changes to merge request:", error);
     if (error instanceof Error && error.message.includes("GitLab token expired")) {
