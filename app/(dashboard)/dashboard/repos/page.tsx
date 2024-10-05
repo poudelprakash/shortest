@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { GitBranch, User, RefreshCw, GitPullRequest } from 'lucide-react';
+import { timeAgo } from '@/utils/timeHelpers'
 
 type Repository = {
   id: string;
@@ -12,6 +13,7 @@ type Repository = {
   testCoverage: number;
   monitoredBranches: string[];
   lastCommit: Date;
+  updatedAt: Date;
   userRole: 'admin' | 'contributor';
   openPullRequests: number;
 };
@@ -57,7 +59,7 @@ const RepositoryCard: React.FC<RepositoryCardProps> = ({ repo, onRefresh, isRefr
           <div>
             <h2 className="text-xl font-semibold">{repo.name}</h2>
             <p className="text-sm text-gray-500">
-              Last synced: {repo.lastSynced.toLocaleString()}
+              Last synced: {timeAgo(repo.updatedAt)}
             </p>
           </div>
           <button
@@ -152,7 +154,7 @@ const RepositoryList: React.FC = () => {
     setRefreshingRepos(prev => [...prev, id]);
     setTimeout(() => {
       setRepositories(prev => prev.map(repo => 
-        repo.id === id ? {...repo, lastSynced: new Date()} : repo
+        repo.id === id ? {...repo} : repo
       ));
       setRefreshingRepos(prev => prev.filter(repoId => repoId !== id));
     }, 2000);
@@ -167,7 +169,7 @@ const RepositoryList: React.FC = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Repositories {(repositories.length > 0)? `[${repositories.length}]` : ''}</h1>
         <div className="flex items-center text-sm text-gray-600">
-          <span className="mr-4">Last synced: {(new Date('2024-10-05T09:45:00')).toLocaleString()}</span>
+          {/* <span className="mr-4">Last synced: {(new Date('2024-10-05T09:45:00')).toLocaleString()}</span> */}
           <button
             className="flex items-center text-sm text-gray-600"
             onClick={handleGlobalRefresh}

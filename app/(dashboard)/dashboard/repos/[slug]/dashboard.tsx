@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Star, RefreshCw, GitBranch, Github, Menu, X } from 'lucide-react'
 import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
+import { timeAgo } from '@/utils/timeHelpers'
 
 export function RepoDashboard() {
   const { slug } = useParams()
@@ -368,10 +369,10 @@ export function RepoDashboard() {
           {!isLoading && (
             <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
               <div className="flex items-center justify-between text-sm text-gray-600">
-                <span>Last build: {repoData.lastBuildTime}</span>
+                <span>Synced: {timeAgo(repoData.updatedAt)}</span>
                 <span className="flex items-center">
                   <GitBranch className="w-4 h-4 mr-1" />
-                  {repoData.lastBuildBranch}
+                  {repoData.monitoredBranches[0]}
                 </span>
               </div>
             </div>
@@ -382,42 +383,3 @@ export function RepoDashboard() {
   )
 }
 
-/**
- * Converts a date to a human-readable "time ago" format.
- *
- * @param {Date | string} inputDate - The date to convert. Can be a Date object or a date string.
- * @returns {string} A string representing how long ago the date was.
- */
-function timeAgo(inputDate) {
-  const now = new Date();
-  const date = new Date(inputDate);
-
-  const seconds = Math.floor((now - date) / 1000);
-
-  let interval = Math.floor(seconds / 31536000); // Seconds in a year
-  if (interval >= 1) {
-    return interval === 1 ? "1 year ago" : `${interval} years ago`;
-  }
-
-  interval = Math.floor(seconds / 2592000); // Seconds in a month
-  if (interval >= 1) {
-    return interval === 1 ? "1 month ago" : `${interval} months ago`;
-  }
-
-  interval = Math.floor(seconds / 86400); // Seconds in a day
-  if (interval >= 1) {
-    return interval === 1 ? "1 day ago" : `${interval} days ago`;
-  }
-
-  interval = Math.floor(seconds / 3600); // Seconds in an hour
-  if (interval >= 1) {
-    return interval === 1 ? "1 hour ago" : `${interval} hours ago`;
-  }
-
-  interval = Math.floor(seconds / 60); // Seconds in a minute
-  if (interval >= 1) {
-    return interval === 1 ? "1 minute ago" : `${interval} minutes ago`;
-  }
-
-  return "Just now";
-}
