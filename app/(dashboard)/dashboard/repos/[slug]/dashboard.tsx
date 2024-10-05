@@ -281,26 +281,22 @@ export function RepoDashboard() {
                 <span className="hidden sm:inline">{repoData.isStarred ? 'Starred' : 'Star'}</span>
               </button>
             )}
-            {/* {!isLoading && (
+            {!isLoading && (
               <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <span>Last</span>
-                <span className="bg-gray-200 text-gray-800 px-2 py-0.5 rounded flex items-center">
-                  <GitBranch className="w-4 h-4 mr-1" />
-                  {repoData.lastBuildBranch}
-                </span>
+
                 <div className="relative group">
-                  <Link
-                    href={`${window.location.href}/builds`}
+                  <div
+                    // href={`${window.location.href}/builds`}
                     className="border-b border-dashed border-gray-400 hover:border-gray-600"
                   >
-                    build {repoData.lastBuildTime}
-                  </Link>
-                  <div className="absolute left-0 mt-1 w-40 bg-white shadow-lg rounded-md p-2 text-xs invisible group-hover:visible">
-                    See recent builds
+                    Synced {timeAgo(repoData.updatedAt)}
                   </div>
+                  {/* <div className="absolute left-0 mt-1 w-40 bg-white shadow-lg rounded-md p-2 text-xs invisible group-hover:visible">
+                    See recent builds
+                  </div> */}
                 </div>
               </div>
-            )} */}
+            )}
             <button
               className="flex items-center text-sm text-gray-600"
               onClick={handleRefresh}
@@ -384,4 +380,44 @@ export function RepoDashboard() {
       </div>
     </div>
   )
+}
+
+/**
+ * Converts a date to a human-readable "time ago" format.
+ *
+ * @param {Date | string} inputDate - The date to convert. Can be a Date object or a date string.
+ * @returns {string} A string representing how long ago the date was.
+ */
+function timeAgo(inputDate) {
+  const now = new Date();
+  const date = new Date(inputDate);
+
+  const seconds = Math.floor((now - date) / 1000);
+
+  let interval = Math.floor(seconds / 31536000); // Seconds in a year
+  if (interval >= 1) {
+    return interval === 1 ? "1 year ago" : `${interval} years ago`;
+  }
+
+  interval = Math.floor(seconds / 2592000); // Seconds in a month
+  if (interval >= 1) {
+    return interval === 1 ? "1 month ago" : `${interval} months ago`;
+  }
+
+  interval = Math.floor(seconds / 86400); // Seconds in a day
+  if (interval >= 1) {
+    return interval === 1 ? "1 day ago" : `${interval} days ago`;
+  }
+
+  interval = Math.floor(seconds / 3600); // Seconds in an hour
+  if (interval >= 1) {
+    return interval === 1 ? "1 hour ago" : `${interval} hours ago`;
+  }
+
+  interval = Math.floor(seconds / 60); // Seconds in a minute
+  if (interval >= 1) {
+    return interval === 1 ? "1 minute ago" : `${interval} minutes ago`;
+  }
+
+  return "Just now";
 }
