@@ -1,8 +1,8 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, gte } from "drizzle-orm";
 import { db } from "./drizzle";
-import { users, User, NewUser, pullRequests, PullRequest } from "./schema";
+import { users, User, NewUser, pullRequests, PullRequest, repositories, Repository } from "./schema";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 
 export async function updateUserSubscription(
@@ -60,4 +60,31 @@ export async function getPullRequests(): Promise<PullRequest[]> {
 
   const user = await getUserByClerkId(userId);
   return db.select().from(pullRequests).where(eq(pullRequests.userId, user.id));
+}
+
+export async function getCachedRepositories(cacheDuration: number): Promise<Repository[]> {
+  const cacheThreshold = new Date(Date.now() - cacheDuration);
+  return db
+    .select()
+    .from(repositories)
+    .where(gte(repositories.lastSynced, cacheThreshold));
+}
+
+export async function upsertRepositories(repositoriesData: Omit<Repository, 'createdAt' | 'updatedAt'>[]): Promise<void> {
+  for (const repoData of repositoriesData) {
+    await db
+      .insert(repositories)
+      .values({
+        ...repoData,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: repositories.id,
+        set: {
+          ...repoData,
+          updatedAt: new Date(),
+        },
+      });
+  }
 }

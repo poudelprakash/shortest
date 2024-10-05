@@ -50,9 +50,25 @@ export const pullRequests = pgTable(
   })
 );
 
+export const repositories = pgTable('repositories', {
+  id: varchar('id').primaryKey(),
+  name: varchar('name').notNull(),
+  lastSynced: timestamp('last_synced').notNull(),
+  maintainability: integer('maintainability'),
+  testCoverage: integer('test_coverage'),
+  monitoredBranches: varchar('monitored_branches').array().notNull(),
+  lastCommit: timestamp('last_commit').notNull(),
+  userRole: varchar('user_role').notNull(),
+  openPullRequests: integer('open_pull_requests').notNull(),
+  provider: varchar('provider').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type PullRequest = typeof pullRequests.$inferSelect;
+export type Repository = typeof repositories.$inferSelect;
 export type NewPullRequest = typeof pullRequests.$inferInsert;
 
 export interface ExtendedPullRequest extends PullRequest {

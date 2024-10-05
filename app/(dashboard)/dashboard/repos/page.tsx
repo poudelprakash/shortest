@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { GitBranch, User, RefreshCw, GitPullRequest } from 'lucide-react';
 
@@ -15,42 +15,6 @@ type Repository = {
   userRole: 'admin' | 'contributor';
   openPullRequests: number;
 };
-
-const initialRepositories: Repository[] = [
-  {
-    id: '1',
-    name: 'Repo One',
-    lastSynced: new Date('2024-10-05T10:02:20'),
-    maintainability: 80,
-    testCoverage: 75,
-    monitoredBranches: ['main', 'dev'],
-    lastCommit: new Date('2024-10-04T15:30:00'),
-    userRole: 'admin',
-    openPullRequests: 3,
-  },
-  {
-    id: '2',
-    name: 'Repo Two',
-    lastSynced: new Date('2024-10-05T10:02:20'),
-    maintainability: 60,
-    testCoverage: 70,
-    monitoredBranches: ['main'],
-    lastCommit: new Date('2024-10-05T09:45:00'),
-    userRole: 'contributor',
-    openPullRequests: 1,
-  },
-  {
-    id: '3',
-    name: 'Repo Three',
-    lastSynced: new Date('2024-10-05T10:02:20'),
-    maintainability: 75,
-    testCoverage: 82,
-    monitoredBranches: ['main', 'dev', 'feature-a', 'feature-b', 'feature-c', 'feature-d', 'feature-e', 'feature-f', 'feature-g', 'feature-h', 'feature-i', 'feature-j', 'feature-k', 'feature-l'],
-    lastCommit: new Date('2024-10-05T08:15:00'),
-    userRole: 'admin',
-    openPullRequests: 5,
-  },
-];
 
 const SkeletonLoader: React.FC = () => (
   <div className="animate-pulse">
@@ -96,7 +60,7 @@ const RepositoryCard: React.FC<RepositoryCardProps> = ({ repo, onRefresh, isRefr
               Last synced: {repo.lastSynced.toLocaleString()}
             </p>
           </div>
-          <button 
+          <button
             className="flex items-center text-sm text-gray-600"
             onClick={(e: React.MouseEvent) => {
               e.preventDefault();
@@ -108,7 +72,7 @@ const RepositoryCard: React.FC<RepositoryCardProps> = ({ repo, onRefresh, isRefr
             <span className="hidden sm:inline">{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
           </button>
         </div>
-        
+
         {isRefreshing ? (
           <SkeletonLoader />
         ) : (
@@ -117,23 +81,23 @@ const RepositoryCard: React.FC<RepositoryCardProps> = ({ repo, onRefresh, isRefr
               <div className="mt-2">
                 <h3 className="text-xs font-medium text-gray-500 mb-1">MAINTAINABILITY</h3>
                 <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-green-500 to-yellow-500 transition-all duration-1000 ease-out" 
-                    style={{width: `${repo.maintainability}%`}}
+                  <div
+                    className="h-full bg-gradient-to-r from-green-500 to-yellow-500 transition-all duration-1000 ease-out"
+                    style={{ width: `${repo.maintainability}%` }}
                   ></div>
                 </div>
               </div>
               <div className="mt-3">
                 <h3 className="text-xs font-medium text-gray-500 mb-1">TEST COVERAGE</h3>
                 <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-green-500 transition-all duration-1000 ease-out" 
-                    style={{width: `${repo.testCoverage}%`}}
+                  <div
+                    className="h-full bg-green-500 transition-all duration-1000 ease-out"
+                    style={{ width: `${repo.testCoverage}%` }}
                   ></div>
                 </div>
               </div>
             </div>
-            
+
             <div className="text-sm">
               <p className="mb-2 flex items-center">
                 <GitBranch size={16} className="mr-1" />
@@ -156,9 +120,33 @@ const RepositoryCard: React.FC<RepositoryCardProps> = ({ repo, onRefresh, isRefr
 };
 
 const RepositoryList: React.FC = () => {
-  const [repositories, setRepositories] = useState<Repository[]>(initialRepositories);
+  const [repositories, setRepositories] = useState<Repository[]>([]);
   const [refreshingRepos, setRefreshingRepos] = useState<string[]>([]);
   const [isGlobalRefreshing, setIsGlobalRefreshing] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const fetchRepositories = async (forceRefresh: boolean = false) => {
+    try {
+      setIsGlobalRefreshing(true);
+      const response = await fetch(`/api/repositories${forceRefresh ? '?refresh=true' : ''}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch repositories');
+      }
+      const data = await response.json();
+      setRepositories(data);
+      setError(null);
+    } catch (err) {
+      setError("Failed to fetch repositories. Please try again.");
+    } finally {
+      setIsGlobalRefreshing(false);
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRepositories();
+  }, []);
 
   const handleRefresh = (id: string): void => {
     setRefreshingRepos(prev => [...prev, id]);
@@ -171,35 +159,46 @@ const RepositoryList: React.FC = () => {
   };
 
   const handleGlobalRefresh = (): void => {
-    setIsGlobalRefreshing(true);
-    setTimeout(() => {
-      setRepositories(prev => prev.map(repo => ({...repo, lastSynced: new Date()})));
-      setIsGlobalRefreshing(false);
-    }, 2000);
+    fetchRepositories(true);
   };
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Repositories</h1>
-        <button 
-          className="flex items-center text-sm text-gray-600"
-          onClick={handleGlobalRefresh}
-          disabled={isGlobalRefreshing}
-        >
-          <RefreshCw className={`w-4 h-4 mr-1 ${isGlobalRefreshing ? 'animate-spin' : ''}`} />
-          <span className="hidden sm:inline">{isGlobalRefreshing ? 'Refreshing...' : 'Refresh'}</span>
-        </button>
+        <h1 className="text-3xl font-bold">Repositories {(repositories.length > 0)? `[${repositories.length}]` : ''}</h1>
+        <div className="flex items-center text-sm text-gray-600">
+          <span className="mr-4">Last synced: {(new Date('2024-10-05T09:45:00')).toLocaleString()}</span>
+          <button
+            className="flex items-center text-sm text-gray-600"
+            onClick={handleGlobalRefresh}
+            disabled={isGlobalRefreshing}
+          >
+            <RefreshCw className={`w-4 h-4 mr-1 ${isGlobalRefreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">
+              {isGlobalRefreshing ? 'Refreshing...' : 'Refresh'}
+            </span>
+          </button>
+        </div>
       </div>
+
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {repositories.map((repo) => (
-          <RepositoryCard 
-            key={repo.id} 
-            repo={repo} 
-            onRefresh={handleRefresh}
-            isRefreshing={isGlobalRefreshing || refreshingRepos.includes(repo.id)}
-          />
-        ))}
+        {isLoading ? (
+          // Display skeleton loaders while loading
+          Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="bg-white shadow-md rounded-lg p-6">
+              <SkeletonLoader />
+            </div>
+          ))
+        ) : (
+          repositories.map((repo) => (
+            <RepositoryCard
+              key={repo.id}
+              repo={repo}
+              onRefresh={handleRefresh}
+              isRefreshing={isGlobalRefreshing || refreshingRepos.includes(repo.id)}
+            />
+          ))
+        )}
       </div>
     </div>
   );
