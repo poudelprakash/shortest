@@ -53,6 +53,7 @@ export const pullRequests = pgTable(
 export const repositories = pgTable('repositories', {
   id: varchar('id').primaryKey(),
   name: varchar('name').notNull(),
+  fullPath: varchar('fullPath').notNull(),
   lastSynced: timestamp('last_synced').notNull(),
   maintainability: integer('maintainability'),
   testCoverage: integer('test_coverage'),

@@ -1,0 +1,1 @@
+ALTER TABLE "repositories" ADD COLUMN "fullPath" varchar NOT NULL;
