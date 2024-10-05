@@ -3,8 +3,13 @@
 import { useState, useEffect } from 'react'
 import { Star, RefreshCw, GitBranch, Github, Menu, X } from 'lucide-react'
 import Link from 'next/link'
+import { useParams, useSearchParams } from 'next/navigation'
 
 export function RepoDashboard() {
+  const { slug } = useParams()
+  const searchParams = useSearchParams()
+  const provider = searchParams.get('provider')
+
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [repoData, setRepoData] = useState({
@@ -13,45 +18,56 @@ export function RepoDashboard() {
     lastBuildBranch: '',
     lastBuildTime: '',
     fileCount: 0,
-    isGitHub: true, // Set to false for GitLab
+    provider: '',
   })
   const [maintainabilityProgress, setMaintainabilityProgress] = useState(0)
   const [testCoverageProgress, setTestCoverageProgress] = useState(0)
+  const [openPullRequests, setOpenPullRequests] = useState([])
   const [activeTab, setActiveTab] = useState('Overview')
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
-  const loadData = () => {
+  const loadData = async (forceRefresh = false) => {
     setIsLoading(true)
-    // Simulating data fetch
-    setTimeout(() => {
-      setRepoData({
-        name: 'lyanglyang/pewpew',
-        isStarred: false,
-        lastBuildBranch: 'master',
-        lastBuildTime: '25 days ago',
-        fileCount: 56,
-        isGitHub: true,
-      })
-      setIsLoading(false)
-    }, 2000)
+    try {
+      const repoResponse = await fetch(`/api/repositories/${slug}?provider=${provider}${forceRefresh ? '&refresh=true' : ''}`)
 
-    const timer = setTimeout(() => {
-      setMaintainabilityProgress(80)
-      setTestCoverageProgress(60)
-    }, 2100)
-    return () => clearTimeout(timer)
+      if (!repoResponse.ok) {
+        throw new Error('Failed to fetch repository data')
+      }
+
+      const repoData = await repoResponse.json()
+      setRepoData(repoData)
+
+      try {
+        const prResponse = await fetch(`/api/repositories/${slug}/pull-requests?provider=${provider}`)
+        if (prResponse.ok) {
+          const prData = await prResponse.json()
+          setOpenPullRequests(prData)
+        } else {
+          console.error('Failed to fetch pull requests')
+          setOpenPullRequests([])
+        }
+      } catch (error) {
+        console.error('Error fetching pull requests:', error)
+        setOpenPullRequests([])
+      }
+    } catch (error) {
+      console.error('Error fetching repository data:', error)
+      // Handle error state here (e.g., set an error message state)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [slug, provider])
 
   const handleRefresh = () => {
     setIsRefreshing(true)
-    loadData()
-    setTimeout(() => {
+    loadData(true).then(() => {
       setIsRefreshing(false)
-    }, 2000)
+    })
   }
 
   const renderSkeleton = () => (
@@ -73,7 +89,7 @@ export function RepoDashboard() {
 
   const renderOverview = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-      <div>
+      <div className='hidden'>
         <h2 className="text-xl font-semibold mb-4">Breakdown</h2>
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="flex items-baseline mb-4">
@@ -83,24 +99,25 @@ export function RepoDashboard() {
           <div className="mt-4">
             <h3 className="text-sm font-medium text-gray-500 mb-1">MAINTAINABILITY</h3>
             <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-green-500 to-yellow-500 transition-all duration-1000 ease-out" 
-                style={{width: `${maintainabilityProgress}%`}}
+              <div
+                className="h-full bg-gradient-to-r from-green-500 to-yellow-500 transition-all duration-1000 ease-out"
+                style={{ width: `${maintainabilityProgress}%` }}
               ></div>
             </div>
           </div>
           <div className="mt-4">
             <h3 className="text-sm font-medium text-gray-500 mb-1">TEST COVERAGE</h3>
             <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-green-500 transition-all duration-1000 ease-out" 
-                style={{width: `${testCoverageProgress}%`}}
+              <div
+                className="h-full bg-green-500 transition-all duration-1000 ease-out"
+                style={{ width: `${testCoverageProgress}%` }}
               ></div>
             </div>
           </div>
         </div>
       </div>
-      <div>
+
+      <div className='hidden'>
         <h2 className="text-xl font-semibold mb-4">Codebase summary</h2>
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="grid grid-cols-2 gap-4">
@@ -141,6 +158,30 @@ export function RepoDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Open pull requests section */}
+      <div className="col-span-1 md:col-span-2 mt-8">
+        <h2 className="text-xl font-semibold mb-4">Open Pull Requests</h2>
+        {openPullRequests.length > 0 ? (
+          <ul className="bg-white rounded-lg shadow divide-y divide-gray-200">
+            {openPullRequests.map((pr) => (
+              <li key={pr.id} className="p-4 hover:bg-gray-50">
+                <Link href={pr.html_url} target="_blank" rel="noopener noreferrer" className="block">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-900">{pr.title}</span>
+                    <span className="text-sm text-gray-500">#{pr.number}</span>
+                  </div>
+                  <div className="mt-2 text-sm text-gray-500">
+                    Opened by {pr.user.login} on {new Date(pr.created_at).toLocaleDateString()}
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-gray-500">No open pull requests</p>
+        )}
+      </div>
     </div>
   )
 
@@ -152,9 +193,8 @@ export function RepoDashboard() {
             <a
               key={item}
               href="#"
-              className={`block px-3 py-2 text-sm font-medium rounded-md ${
-                item === 'General' ? 'bg-green-100 text-green-700' : 'text-gray-600 hover:bg-gray-50'
-              }`}
+              className={`block px-3 py-2 text-sm font-medium rounded-md ${item === 'General' ? 'bg-green-100 text-green-700' : 'text-gray-600 hover:bg-gray-50'
+                }`}
             >
               {item}
             </a>
@@ -214,12 +254,14 @@ export function RepoDashboard() {
             <h1 className="text-2xl sm:text-3xl font-semibold text-gray-800">
               {isLoading ? (
                 <div className="h-8 bg-gray-200 rounded w-64 animate-pulse"></div>
-              ) : (<>
-                <Link href={`/dashboard/repos/`} passHref>Repositories</Link>&gt;{repoData.name}</>
+              ) : (
+                <>
+                  <Link href={`/dashboard/repos/`} passHref>Repositories</Link>&gt;{repoData.name}
+                </>
               )}
             </h1>
             {!isLoading && (
-              repoData.isGitHub ? (
+              repoData.provider === 'github' ? (
                 <Github className="w-6 h-6 text-gray-600" />
               ) : (
                 <GitBranch className="w-6 h-6 text-orange-500" />
@@ -231,16 +273,15 @@ export function RepoDashboard() {
               <div className="h-8 w-24 bg-gray-200 rounded animate-pulse"></div>
             ) : (
               <button
-                className={`bg-white border border-gray-300 rounded-md px-3 py-1 flex items-center space-x-1 text-sm ${
-                  repoData.isStarred ? 'text-yellow-500' : 'text-gray-600'
-                }`}
+                className={`bg-white border border-gray-300 rounded-md px-3 py-1 flex items-center space-x-1 text-sm ${repoData.isStarred ? 'text-yellow-500' : 'text-gray-600'
+                  }`}
                 onClick={() => setRepoData(prev => ({ ...prev, isStarred: !prev.isStarred }))}
               >
                 <Star className="w-4 h-4" fill={repoData.isStarred ? 'currentColor' : 'none'} />
                 <span className="hidden sm:inline">{repoData.isStarred ? 'Starred' : 'Star'}</span>
               </button>
             )}
-            {!isLoading && (
+            {/* {!isLoading && (
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <span>Last</span>
                 <span className="bg-gray-200 text-gray-800 px-2 py-0.5 rounded flex items-center">
@@ -248,7 +289,7 @@ export function RepoDashboard() {
                   {repoData.lastBuildBranch}
                 </span>
                 <div className="relative group">
-                  <Link 
+                  <Link
                     href={`${window.location.href}/builds`}
                     className="border-b border-dashed border-gray-400 hover:border-gray-600"
                   >
@@ -259,8 +300,8 @@ export function RepoDashboard() {
                   </div>
                 </div>
               </div>
-            )}
-            <button 
+            )} */}
+            <button
               className="flex items-center text-sm text-gray-600"
               onClick={handleRefresh}
               disabled={isRefreshing}
@@ -268,8 +309,8 @@ export function RepoDashboard() {
               <RefreshCw className={`w-4 h-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
             </button>
-            <button 
-              className="sm:hidden p-2 text-gray-600" 
+            <button
+              className="sm:hidden p-2 text-gray-600"
               onClick={() => setIsMobileMenuOpen(true)}
               aria-label="Open menu"
             >
@@ -277,7 +318,7 @@ export function RepoDashboard() {
             </button>
           </div>
         </div>
-        
+
         <nav className="hidden sm:flex space-x-6 py-4">
           {['Overview', 'Progress', 'Issues', 'Code', 'Filters', 'Trends', 'Repo Settings'].map((item) => (
             <button
@@ -289,7 +330,7 @@ export function RepoDashboard() {
             </button>
           ))}
         </nav>
-        
+
         {isLoading || isRefreshing ? renderSkeleton() : (
           <>
             {activeTab === 'Overview' && renderOverview()}
@@ -303,8 +344,8 @@ export function RepoDashboard() {
         <div className={`fixed inset-y-0 right-0 max-w-xs w-full bg-white shadow-xl transform transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
-            <button 
-              className="p-2 text-gray-600" 
+            <button
+              className="p-2 text-gray-600"
               onClick={() => setIsMobileMenuOpen(false)}
               aria-label="Close menu"
             >
@@ -319,11 +360,10 @@ export function RepoDashboard() {
                   setActiveTab(item)
                   setIsMobileMenuOpen(false)
                 }}
-                className={`block w-full text-left px-4 py-2 text-sm ${
-                  item === activeTab 
-                    ? 'text-green-600 bg-green-50 font-medium' 
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
+                className={`block w-full text-left px-4 py-2 text-sm ${item === activeTab
+                  ? 'text-green-600 bg-green-50 font-medium'
+                  : 'text-gray-600 hover:bg-gray-50'
+                  }`}
               >
                 {item}
               </button>

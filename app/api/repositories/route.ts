@@ -6,7 +6,9 @@ import { eq, gte } from 'drizzle-orm'
 import { repositories } from '@/lib/db/schema'
 import { getCachedRepositories, upsertRepositories } from '@/lib/db/queries'
 
-const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+// const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+const CACHE_DURATION = 60 * 24 * 60 * 60 * 1000; // 60 days
+
 
 export async function GET(request: Request) {
   try {

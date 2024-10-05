@@ -51,7 +51,7 @@ const RepositoryCard: React.FC<RepositoryCardProps> = ({ repo, onRefresh, isRefr
   };
 
   return (
-    <Link href={`/dashboard/repos/${repo.id}`} passHref>
+    <Link href={`/dashboard/repos/${repo.id}/?provider=${repo.provider}`} passHref>
       <div className="bg-white shadow-md rounded-lg p-6 hover:shadow-lg transition-shadow cursor-pointer">
         <div className="flex justify-between items-start mb-4">
           <div>
