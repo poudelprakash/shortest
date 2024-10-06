@@ -1,10 +1,11 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { Star, RefreshCw, GitBranch, Github, Menu, X } from 'lucide-react'
+import { Star, RefreshCw, GitBranch, Github, Menu, X, GitPullRequest } from 'lucide-react'
 import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import { timeAgo } from '@/utils/timeHelpers'
+import { PullRequestItem } from '../../pull-request'
 
 export function RepoDashboard() {
   const { slug } = useParams()
@@ -160,29 +161,35 @@ export function RepoDashboard() {
         </div>
       </div>
 
-      {/* Open pull requests section */}
-      <div className="col-span-1 md:col-span-2 mt-8">
-        <h2 className="text-xl font-semibold mb-4">Open Pull Requests</h2>
+      <div className="col-span-1 md:col-span-2 w-full">
         {openPullRequests.length > 0 ? (
-          <ul className="bg-white rounded-lg shadow divide-y divide-gray-200">
-            {openPullRequests.map((pr) => (
-              <li key={pr.id} className="p-4 hover:bg-gray-50">
-                <Link href={pr.html_url} target="_blank" rel="noopener noreferrer" className="block">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-900">{pr.title}</span>
-                    <span className="text-sm text-gray-500">#{pr.number}</span>
-                  </div>
-                  <div className="mt-2 text-sm text-gray-500">
-                    Opened by {pr.user.login} on {new Date(pr.created_at).toLocaleDateString()}
-                  </div>
-                </Link>
+          <ul className="space-y-8 w-full">
+            {openPullRequests.map((codeChangeRequest) => (
+              <li key={codeChangeRequest.id}>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-lg">
+                    {codeChangeRequest.fullPath}
+                  </h3>
+                </div>
+                <PullRequestItem pullRequest={codeChangeRequest} />
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-gray-500">No open pull requests</p>
+          <div className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6">
+            <div className="flex flex-col items-center justify-center text-center">
+              <GitPullRequest className="h-16 w-16 text-gray-400 mb-4" />
+              <h3 className="text-xl font-semibold mb-2">
+                No pull requests or merge requests found
+              </h3>
+              <p className="text-gray-600 mb-4">
+                We couldn't find any pull requests or merge requests assigned to you.
+              </p>
+            </div>
+          </div>
         )}
       </div>
+
     </div>
   )
 
@@ -317,7 +324,7 @@ export function RepoDashboard() {
         </div>
 
         <nav className="hidden sm:flex space-x-6 py-4">
-          {['Overview', 'Progress', 'Issues', 'Code', 'Filters', 'Trends', 'Repo Settings'].map((item) => (
+          {['Overview', 'Repo Settings'].map((item) => (
             <button
               key={item}
               onClick={() => setActiveTab(item)}
@@ -350,7 +357,7 @@ export function RepoDashboard() {
             </button>
           </div>
           <nav className="px-4 py-6">
-            {['Overview', 'Progress', 'Issues', 'Code', 'Filters', 'Trends', 'Repo Settings'].map((item) => (
+            {['Overview', 'Repo Settings'].map((item) => (
               <button
                 key={item}
                 onClick={() => {
