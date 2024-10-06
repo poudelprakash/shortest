@@ -4,6 +4,8 @@ import {
   timestamp,
   uniqueIndex,
   varchar,
+  jsonb,
+  boolean,
   integer,
 } from "drizzle-orm/pg-core";
 
@@ -65,6 +67,21 @@ export const repositories = pgTable('repositories', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
+
+export const repositoryConfigs = pgTable('repository_configs', {
+  id: serial('id').primaryKey(),
+  repositoryId: varchar('repository_id').references(() => repositories.id).notNull(), // Foreign key to 'repositories'
+  testFrameworks: jsonb('test_frameworks').notNull(),      // List of test frameworks used
+  testFolderPatterns: jsonb('test_folder_patterns').notNull(),   // Patterns for test folder locations
+  testFileNamingConvention: jsonb('test_file_naming_convention').notNull(), // Test file naming conventions
+  coverageFolderPath: varchar('coverage_folder_path'),     // Path for test coverage results
+  userTestFolderPreference: jsonb('user_test_folder_preference'), // User preference for test location
+  testTypeHandling: jsonb('test_type_handling'),           // Handling rules for different test types
+  featureDomainBasedTest: boolean('feature_domain_based_test').default(false), // Domain/feature-based test structure
+  externalTestRepo: varchar('external_test_repo'),         // External test repo path if applicable
+  createdAt: timestamp('created_at').defaultNow().notNull(), // Auto-timestamp for creation
+  updatedAt: timestamp('updated_at').defaultNow().notNull(), // Auto-timestamp for updates
+});
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;

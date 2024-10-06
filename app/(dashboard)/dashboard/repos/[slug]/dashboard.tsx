@@ -5,6 +5,8 @@ import { Star, RefreshCw, GitBranch, Github, Menu, X, GitPullRequest } from 'luc
 import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import { timeAgo } from '@/utils/timeHelpers'
+import { Activity, /* other imports */ } from 'lucide-react';
+
 import { PullRequestItem } from '../../pull-request'
 
 export function RepoDashboard() {
@@ -27,6 +29,29 @@ export function RepoDashboard() {
   const [openPullRequests, setOpenPullRequests] = useState([])
   const [activeTab, setActiveTab] = useState('Overview')
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isScanning, setIsScanning] = useState(false);
+
+  const handleScan = async () => {
+    setIsScanning(true);
+    try {
+      const response = await fetch(`/api/repositories/${slug}/scan?provider=${provider}`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to trigger scan');
+      }
+
+      const data = await response.json();
+      // Optionally handle the response data
+      console.log('Scan initiated:', data);
+    } catch (error) {
+      console.error('Error triggering scan:', error);
+      // Optionally display an error message to the user
+    } finally {
+      setIsScanning(false);
+    }
+  };
 
   const loadData = async (forceRefresh = false) => {
     setIsLoading(true)
@@ -313,6 +338,19 @@ export function RepoDashboard() {
               <RefreshCw className={`w-4 h-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
             </button>
+            {/* New Scan button */}
+            <button
+              className="flex items-center text-sm text-gray-600"
+              onClick={handleScan}
+              disabled={isScanning}
+            >
+              <Activity className={`w-4 h-4 mr-1 ${isScanning ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">{isScanning ? 'Scanning...' : 'Scan'}</span>
+            </button>
+
+            {/* Existing Mobile Menu Button */}
+
+
             <button
               className="sm:hidden p-2 text-gray-600"
               onClick={() => setIsMobileMenuOpen(true)}
