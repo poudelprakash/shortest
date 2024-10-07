@@ -57,16 +57,28 @@ export async function POST(req: Request) {
   const { mode, pr_diff, test_files } =
     (await req.json()) as GenerateTestsInput;
 
-    const prompt = "You are an expert software engineer. " + 
-    (mode === "write"
-        ? "Write entirely new tests and update relevant existing tests to reflect the added/edited/removed functionality."
-        : "Update existing test files to get the PR build back to passing. Make updates to tests only—do not add or remove tests.") +
-    "\n\nPR Diff:\n<PR Diff>\n" + pr_diff + "\n</PR Diff>" +
-    "\n\nRespond with an array of test files. Each test file should be represented as an object with a 'name' and 'content' (where 'name' refers to the path to the file). Do not include any code block formatting (e.g., ``` or language names) in your response. Ensure that the 'content' value uses double quotes with escaped newlines (\\n) for multi-line strings.";
-    
-  const tests = await debugGenerateObject(prompt, "gemini");
 
-  console.log('tests1', tests);
+  const prompt = `You are an expert software engineer. ${
+    mode === "write"
+      ? "Write entirely new tests and update relevant existing tests in order to reflect the added/edited/removed functionality."
+      : "Update existing test files to get the PR build back to passing. Make updates to tests only—do not add or remove tests."
+  }
+
+  PR Diff:
+  <PR Diff>
+  ${pr_diff}
+  </PR Diff>
+
+  ${mode === "update" ? "Failing test files:" : "Existing test files:"}
+  <Test Files>
+  ${test_files
+    .map((file) => `${file.name}\n${file.content ? `: ${file.content}` : ""}`)
+    .join("\n")}
+  </Test Files>
+
+  Respond with an array of test files with their name being the path to the file and the content being the full contents of the updated test file.`+"Do not include any code block formatting (e.g., ``` or language names) in your response. Ensure that the 'content' value uses double quotes with escaped newlines (\\n) for multi-line strings.";
+
+  const tests = await debugGenerateObject(prompt, "gemini");
 
   return new Response(JSON.stringify(tests), {
     headers: { "Content-Type": "application/json" },
