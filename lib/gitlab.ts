@@ -106,7 +106,8 @@ export async function getAssignedMergeRequests() {
 export async function commitChangesToMergeRequest(
   projectId: number,
   mergeRequestIid: number,
-  filesToCommit: TestFile[]
+  filesToCommit: TestFile[],
+  commitMessage: string
 ): Promise<string> {
   try {
     const gitlab = await getGitlabClient();
