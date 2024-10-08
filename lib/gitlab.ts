@@ -124,7 +124,7 @@ export async function commitChangesToMergeRequest(
     const commit = await gitlab.Commits.create(
       projectId,
       branch,
-      "Update test files",
+      commitMessage,
       actions
     );
 

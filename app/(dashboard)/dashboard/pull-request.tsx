@@ -59,7 +59,7 @@ export function PullRequestItem({ pullRequest }: PullRequestItemProps) {
       if (mode === "update") {
         const failingTests = await getFailingTests(pr);
         testFilesToUpdate = oldTestFiles.filter(file => 
-          failingTests.some((failingFile: { name: string; }) => failingFile.name === file.name)
+          failingTests.some(failingFile => failingFile.name === file.name)
         );
       }
 
