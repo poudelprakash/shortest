@@ -2,7 +2,8 @@
 
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { Octokit } from "@octokit/rest";
-import { TestFile } from "../app/(dashboard)/dashboard/types";
+import { TestFile, PullRequest } from "../app/(dashboard)/dashboard/types";
+import AdmZip from "adm-zip";
 
 export async function getOctokit() {
   const { userId } = auth();
@@ -39,7 +40,7 @@ export async function getAssignedPullRequests() {
 
         const branchName = pullRequestData.head.ref;
 
-        const buildStatus = await fetchBuildStatus(
+        const buildStatus = await fetchBuildStatusForRef(
           octokit,
           owner,
           repo,
@@ -71,7 +72,41 @@ export async function getAssignedPullRequests() {
   }
 }
 
-async function fetchBuildStatus(
+export async function fetchBuildStatus(owner: string, repo: string, pullNumber: number): Promise<PullRequest> {
+  const octokit = await getOctokit();
+
+  try {
+    const { data: pr } = await octokit.pulls.get({
+      owner,
+      repo,
+      pull_number: pullNumber,
+    });
+
+    const buildStatus = await fetchBuildStatusForRef(octokit, owner, repo, pr.head.ref);
+
+    return {
+      id: pr.id,
+      title: pr.title,
+      number: pr.number,
+      buildStatus,
+      isDraft: pr.draft || false,
+      branchName: pr.head.ref,
+      repository: {
+        id: pr.base.repo.id,
+        name: pr.base.repo.name,
+        full_name: pr.base.repo.full_name,
+        owner: {
+          login: pr.base.repo.owner.login,
+        },
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching build status:", error);
+    throw error;
+  }
+}
+
+async function fetchBuildStatusForRef(
   octokit: Octokit,
   owner: string,
   repo: string,
@@ -84,21 +119,26 @@ async function fetchBuildStatus(
       ref,
     });
 
-    if (data.check_runs.length === 0) {
+    if (data.total_count === 0) {
       return "pending";
     }
 
-    const statuses = data.check_runs.map((run) => run.conclusion);
-    if (statuses.every((status) => status === "success")) {
+    const statuses = data.check_runs.map((run) => run.status);
+    if (statuses.some((status) => status === "in_progress")) {
+      return "running";
+    }
+
+    const conclusions = data.check_runs.map((run) => run.conclusion);
+    if (conclusions.every((conclusion) => conclusion === "success")) {
       return "success";
-    } else if (statuses.some((status) => status === "failure")) {
+    } else if (conclusions.some((conclusion) => conclusion === "failure")) {
       return "failure";
     } else {
       return "pending";
     }
   } catch (error) {
     console.error("Error fetching build status:", error);
-    return "unknown";
+    return "pending";
   }
 }
 
@@ -324,6 +364,88 @@ export async function getFailingTests(
     return failingTestFiles;
   } catch (error) {
     console.error('Error fetching failing tests:', error);
+    throw error;
+  }
+}
+
+export async function getWorkflowLogs(owner: string, repo: string, runId: string): Promise<string> {
+  const octokit = await getOctokit();
+
+  try {
+    // Get workflow run information
+    const { data: workflowRun } = await octokit.actions.getWorkflowRun({
+      owner,
+      repo,
+      run_id: parseInt(runId),
+    });
+
+    // Download logs
+    const response = await octokit.actions.downloadWorkflowRunLogs({
+      owner,
+      repo,
+      run_id: parseInt(runId),
+      headers: { accept: 'application/vnd.github.v3+json' },
+    });
+
+    let buffer: Buffer;
+
+    if (response.data instanceof Buffer) {
+      buffer = response.data;
+    } else if (response.data instanceof ArrayBuffer) {
+      buffer = Buffer.from(response.data);
+    } else if (typeof response.data === 'object' && response.data !== null) {
+      // If it's a ReadableStream or similar
+      const chunks = [];
+      for await (const chunk of response.data as any) {
+        chunks.push(chunk);
+      }
+      buffer = Buffer.concat(chunks);
+    } else {
+      throw new Error(`Unexpected response format: ${typeof response.data}`);
+    }
+
+    // Unzip the content
+    const zip = new AdmZip(buffer);
+    const zipEntries = zip.getEntries();
+
+    const logs: Record<string, string> = {};
+    zipEntries.forEach((entry) => {
+      if (!entry.isDirectory) {
+        logs[entry.entryName] = entry.getData().toString('utf8');
+      }
+    });
+
+    // Combine all logs into a single string
+    let logsContent = '';
+    for (const [filename, content] of Object.entries(logs)) {
+      logsContent += `File: ${filename}\n${content}\n\n`;
+    }
+
+    return logsContent;
+  } catch (error) {
+    console.error("Error downloading workflow logs:", error);
+    throw new Error(`Failed to download workflow logs: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+export async function getLatestRunId(owner: string, repo: string, branchName: string): Promise<string | null> {
+  const octokit = await getOctokit();
+
+  try {
+    const { data: runs } = await octokit.actions.listWorkflowRunsForRepo({
+      owner,
+      repo,
+      branch: branchName,
+      per_page: 1,
+    });
+
+    if (runs.workflow_runs.length > 0) {
+      return runs.workflow_runs[0].id.toString();
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error fetching latest run ID:', error);
     throw error;
   }
 }
