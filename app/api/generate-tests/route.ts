@@ -1,8 +1,8 @@
 import { anthropic } from "@ai-sdk/anthropic";
-import { generateObject } from "ai";
+import { streamObject } from "ai";
 import { z } from "zod";
-import { GenerateTestsInput } from "./schema";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GenerateTestsInput, TestFileSchema } from "./schema";
 
 export const maxDuration = 30;
 
@@ -19,7 +19,7 @@ async function debugGenerateObject(prompt: string, model: "anthropic" | "gemini"
     let result;
 
     if (model === "anthropic") {
-      result = await generateObject({
+      result = await streamObject({
         model: anthropic("claude-3-haiku-20240307"),  // Using Claude 3 Haiku
         schema: schema,
         prompt: prompt,
