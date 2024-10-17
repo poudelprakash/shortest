@@ -53,6 +53,7 @@ export async function getAssignedMergeRequests() {
           owner: project.namespace.path,
           repo: project.path,
           branchName: mr.source_branch,
+          source: 'gitlab'
         };
       })
     );

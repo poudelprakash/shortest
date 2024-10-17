@@ -91,6 +91,7 @@ export async function fetchBuildStatus(owner: string, repo: string, pullNumber: 
       buildStatus,
       isDraft: pr.draft || false,
       branchName: pr.head.ref,
+      source: 'gitlab',
       repository: {
         id: pr.base.repo.id,
         name: pr.base.repo.name,
