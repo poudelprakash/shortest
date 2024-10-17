@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   GitPullRequestDraft,
   GitPullRequest,
@@ -11,6 +12,8 @@ import {
   PlusCircle,
   Loader2,
   AlertCircle,
+  Github,
+  GitBranch,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
@@ -19,11 +22,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import dynamic from "next/dynamic";
 import { PullRequest, TestFile } from "./types";
 import { useToast } from "@/hooks/use-toast";
-import {
-  commitChangesToPullRequest,
-  getPullRequestInfo,
-  getFailingTests,
-} from "@/lib/github";
+import { commitChangesToPullRequest, getPullRequestInfo, getFailingTests } from "@/lib/gitProviderActions";
 import { Input } from "@/components/ui/input";
 import useSWR from "swr";
 import { fetchBuildStatus } from "@/lib/github";
@@ -58,7 +57,7 @@ export function PullRequestItem({
     {
       fallbackData: initialPullRequest,
       refreshInterval: optimisticRunning ? 10000 : 0,
-      onSuccess: (data) => {
+      onSuccess: (data: { buildStatus: string; }) => {
         if (data.buildStatus !== "running" && data.buildStatus !== "pending") {
           setOptimisticRunning(false);
         }
@@ -110,9 +109,7 @@ export function PullRequestItem({
     schema: TestFileSchema,
     onFinish: async (result) => {
       const { testFiles: oldTestFiles } = await getPullRequestInfo(
-        pullRequest.repository.owner.login,
-        pullRequest.repository.name,
-        pullRequest.number
+        pullRequest
       );
       const { filteredTestFiles, newSelectedFiles, newExpandedFiles } =
         handleTestFilesUpdate(oldTestFiles, result.object?.tests);
@@ -136,22 +133,14 @@ export function PullRequestItem({
     setError(null);
 
     try {
-      const { diff, testFiles: oldTestFiles } = await getPullRequestInfo(
-        pullRequest.repository.owner.login,
-        pullRequest.repository.name,
-        pullRequest.number
-      );
+      const { diff, testFiles: oldTestFiles } = await getPullRequestInfo(pr);
 
       let testFilesToUpdate = oldTestFiles;
 
       if (mode === "update") {
-        const failingTests = await getFailingTests(
-          pr.repository.owner.login,
-          pr.repository.name,
-          pr.number
-        );
-        testFilesToUpdate = oldTestFiles.filter((file) =>
-          failingTests.some((failingFile) => failingFile.name === file.name)
+        const failingTests = await getFailingTests(pr);
+        testFilesToUpdate = oldTestFiles.filter(file => 
+          failingTests.some(failingFile => failingFile.name === file.name)
         );
       }
 
@@ -217,14 +206,8 @@ export function PullRequestItem({
           name: file.name,
           content: file.content,
         }));
-
-      const newCommitUrl = await commitChangesToPullRequest(
-        pullRequest.repository.owner.login,
-        pullRequest.repository.name,
-        pullRequest.number,
-        filesToCommit,
-        commitMessage
-      );
+  
+      const newCommitUrl = await commitChangesToPullRequest(pullRequest, filesToCommit, commitMessage);
 
       toast({
         title: "Changes committed successfully",
@@ -285,22 +268,37 @@ export function PullRequestItem({
   const expandedFilesToShow = isStreaming ? newExpandedFiles : expandedFiles;
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-md">
+    <div className={`bg-white p-4 rounded-lg shadow-md ${pullRequest.source === 'gitlab' ? 'border-l-4 border-orange-500' : ''}`}>
       <div className="flex items-center justify-between mb-2">
         <span className="flex items-center">
           {pullRequest.isDraft ? (
             <GitPullRequestDraft className="mr-2 h-4 w-4 text-gray-400" />
           ) : (
-            <GitPullRequest className="mr-2 h-4 w-4" />
+            <GitPullRequest className={`mr-2 h-4 w-4 ${pullRequest.source === 'github' ? '' : 'text-orange-500'}`} />
           )}
           <span className="font-medium">{pullRequest.title}</span>
         </span>
-        <Link
-          href={`https://github.com/${pullRequest.repository.full_name}/pull/${pullRequest.number}`}
-          className="text-sm text-gray-600 underline"
-        >
-          #{pullRequest.number}
-        </Link>
+        <div className="flex items-center">
+          <Badge 
+            variant={pullRequest.source === 'github' ? 'default' : 'warning'}
+            className="mr-2"
+          >
+            {pullRequest.source === 'github' ? (
+              <Github className="h-3 w-3 mr-1" />
+            ) : (
+              <GitBranch className="h-3 w-3 mr-1" />
+            )}
+            {pullRequest.source === 'github' ? 'GitHub' : 'GitLab'}
+          </Badge>
+          <Link
+            href={`https://${pullRequest.source}.com/${pullRequest.repository.full_name}/${pullRequest.source === 'github' ? 'pull' : 'merge_requests'}/${pullRequest.number}`}
+            className="text-sm text-gray-600 underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            #{pullRequest.number}
+          </Link>
+        </div>
       </div>
       <div className="flex items-center justify-between">
         <span className="flex items-center">
@@ -314,8 +312,10 @@ export function PullRequestItem({
             <XCircle className="mr-2 h-4 w-4 text-red-500" />
           )}
           <Link
-            href={`https://github.com/${pullRequest.repository.full_name}/pull/${pullRequest.number}/checks`}
+            href={`https://${pullRequest.source}.com/${pullRequest.repository.full_name}/${pullRequest.source === 'github' ? 'pull' : 'merge_requests'}/${pullRequest.number}/checks`}
             className="text-sm underline text-gray-600"
+            target="_blank"
+            rel="noopener noreferrer"
           >
             Build:{" "}
             {isRunning
