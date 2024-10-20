@@ -358,7 +358,7 @@ export function PullRequestItem({
             <XCircle className="mr-2 h-4 w-4 text-red-500" />
           )}
           <Link
-            href={`https://${pullRequest.source}.com/${pullRequest.repository.full_name}/${pullRequest.source === 'github' ? 'pull' : 'merge_requests'}/${pullRequest.number}/checks`}
+            href={`https://${pullRequest.source}.com/${pullRequest.repository.full_name}/${pullRequest.source === 'github' ? 'pull' : 'merge_requests'}/${pullRequest.number}/${pullRequest.source === 'github' ? 'checks' : 'pipelines'}`}
             className="text-sm underline text-gray-600"
             target="_blank"
             rel="noopener noreferrer"

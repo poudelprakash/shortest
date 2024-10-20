@@ -54,7 +54,7 @@ export async function getAssignedMergeRequests() {
           repository: {
             id: project.id,
             name: project.path,
-            full_name: `${project.namespace.path}/${project.path}`,
+            full_name: mr.references.full.split('!')[0],
             owner: {
               login: project.namespace.path,
             },
@@ -98,7 +98,7 @@ export async function fetchBuildStatus(projectId: number, mergeRequestIid: numbe
       repository: {
         id: mr.project_id,
         name: mr.source_project_id ? mr.source_project_id.toString() : '',
-        full_name: mr.references.full,
+        full_name: mr.references.full.split('!')[0],
         owner: {
           login: mr.references.full.split('/')[0],
         },
