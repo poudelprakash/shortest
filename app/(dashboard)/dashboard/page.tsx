@@ -1,6 +1,6 @@
 "use client";
 
-import { getAssignedPullRequests } from "@/lib/github";
+import { getAssignedPullRequests } from "@/lib/gitProviderActions";
 import { AlertCircle, GitPullRequest, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { PullRequestItem } from "./pull-request";
@@ -58,19 +58,7 @@ export default function DashboardPage() {
           setError(data.error as string);
           setPullRequests([]);
         } else {
-          setPullRequests(
-            data.map((pr) => ({
-              ...pr,
-              repository: {
-                id: parseInt(pr.repoId, 10),
-                name: pr.repo,
-                full_name: `${pr.owner}/${pr.repo}`,
-                owner: {
-                  login: pr.owner,
-                },
-              },
-            }))
-          );
+          setPullRequests(data as PullRequest[]);
           setError(null);
         }
         setLoading(false);
@@ -78,7 +66,7 @@ export default function DashboardPage() {
         console.error("Error fetching pull requests:", error);
         setLoading(false);
         setError(
-          "Failed to fetch pull requests. Please reconnect your GitHub account."
+          "Failed to fetch pull requests. Please reconnect your GitHub and GitLab accounts."
         );
         setPullRequests([]);
       }
