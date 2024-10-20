@@ -61,6 +61,15 @@ export async function getAssignedPullRequests() {
           owner,
           repo,
           branchName,
+          repository: {
+            id: pullRequestData.base.repo.id,
+            name: pullRequestData.base.repo.name,
+            full_name: pullRequestData.base.repo.full_name,
+            owner: {
+              login: pullRequestData.base.repo.owner.login,
+            },
+          },
+          source: "github"
         };
       })
     );
@@ -91,6 +100,7 @@ export async function fetchBuildStatus(owner: string, repo: string, pullNumber: 
       buildStatus,
       isDraft: pr.draft || false,
       branchName: pr.head.ref,
+      source: 'github',
       repository: {
         id: pr.base.repo.id,
         name: pr.base.repo.name,
